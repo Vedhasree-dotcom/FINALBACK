@@ -1,0 +1,247 @@
+const express = require("express");
+const router = express.Router();
+const User = require("../models/User")
+const bcrypt = require("bcryptjs"); // used for token encryption and decryption
+const jwt = require("jsonwebtoken"); //login cheyumbo token koode pass cheyum ,athin cendi
+const nodemailer = require("nodemailer"); //manage email otp
+const twilio = require("twilio"); //manage phone number otp
+require("dotenv").config();
+
+
+// Create a transporter object using SMTP (mail senting protocol)
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS, //Use the email, password from your services
+    },
+});
+
+// Twilio setup
+const client = twilio(process.env.TWILIO_SID, 
+    process.env.TWILIO_AUTH_TOKEN);
+
+
+// Simple validators
+function isEmail(value) {
+    return typeof value === 'string' && /\S+@\S+\.\S+/.test(value);
+}
+function isPhoneE164(value){
+    return typeof value === 'string' && /^\+\d{10,15}$/.test(value);
+}
+function isPassword(value){
+    return typeof value === 'string' && value.length >= 6;
+}
+
+// Functions: (here we are not giving in usercontroller)
+// Register endpoint
+router.post("/register", async(req, res) => {
+    const { name, email, password, phone} = req.body;
+    
+    // basic server-side validation
+    if (!name || typeof name != 'string' || name.trim === '') 
+        return res.status(400).json({ message: 'Name is required' });
+    if (!email || !isEmail(email))
+         return res.status(400).json({ message: 'Valid email is required' });
+    if (!password || !isPassword(password))
+        return res.status(400).json({ message: 'Password must be at least 6 caracters' });
+    if (!phone || !isPhoneE164(phone))
+        return res.status(400).json({ message: 'Phone is required in E.164 format (eg. +1234567890)' });
+
+    try{
+        const existingUser = await User.findOne({email}); //check if user existing or not 
+        if(existingUser) return res.status(400).json({ message: "User already exists"});
+
+        const hashedPassword = await bcrypt.hash(password, 10); //if not exist,..bcrypt it and save it
+        const user = new User({ name, email, phone, password: hashedPassword });
+        await user.save();
+
+        // Email verification
+        const token = jwt.sign({ id: user._id}, process.env.JWT_SECRET, 
+            {expiresIn: "1h"}); //create token
+
+        const url = `http://localhost:${process.env.PORT}/api/auth/verify/${token}`; //create url using token
+
+        // send email - url is sending
+        await transporter.sendMail({ //sendMail function
+            to:email, //to whom
+            subject: "Verify your email",
+            html: `<h3>Click <a href="${url}">here</a> to verify your email</h3>`,
+        });
+
+        res.status(201).json({ message: "User registered. Check your email to verify."});
+    }
+    catch(err) {
+        res.status(500).json({message:err.message});
+    }
+});
+
+// Email verification
+router.get("/verify/:token", async (req, res) => {
+    try {
+        const {id} = jwt.verify(req.params.token, process.env.JWT_SECRET);
+        await User.findByIdAndUpdate(id, {isVerified: true});
+        
+        // Redirect to frontend login page with a flag so the frontend can show a message
+        const FRONTEND =process.env.FRONTEND_URL || "http://localhost:5173";
+        return res.redirect(`${FRONTEND}/?verified=1`);
+        
+        return res.json("email verified successfully");
+    }
+    catch(err) {
+        res.status(400).send("Invalid or expired link");
+    }
+});
+
+// Login (send OTP)
+router.post("/login", async (req, res) => {
+    const { email, password } = req.body;
+
+    // Basic validation
+    if (!email || !isEmail(email))
+        return res.status(400).json({ message: "Valid email is required" });
+
+    if (!password || !isPassword(password))
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user)
+            return res.status(400).json({ message: "User not found" });
+
+        // Check email verification
+        if (!user.isVerified)
+            return res.status(400).json({ message: "Email not verified. Please verify your email before login" });
+
+        // Compare password
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch)
+            return res.status(400).json({ message: "Incorrect password" });
+
+        // Generate OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        user.otp = otp;
+        await user.save();
+
+        // Send OTP via Twilio to user's phone on record
+        if (!user.phone) {
+            return res.status(400).json({ message: "User has no phone number on record" });
+        }
+        await client.messages.create({
+            body: `Your login OTP is ${otp}`,
+            from: process.env.TWILIO_PHONE,
+            to: user.phone,
+        });
+        res.json({ message: "OTP sent" });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Verify OTP and issue access + refresh tokens
+router.post("/verify-otp", async (req, res) => {
+    const { email, otp } = req.body;
+
+    // Validation
+    if (!email || !isEmail(email))
+        return res.status(400).json({ message: "valid email is required" });
+    
+    if (!otp || typeof otp !== 'string' || !/^\d{6}$/.test(otp))
+        return res.status(400).json({ message: "OTP must be a 6 digit string" });
+
+    try {
+        const user = await User.findOne({email });
+        if (!user)
+            return res.status(400).json({ message: "User not found" });
+
+        if (user.otp === otp) {
+            user.otp = null;
+            await user.save();
+
+            // Build minimal payload (avoid embedding sensitive fields)
+            const payload = { id: user._id, name: user.name, email: user.email, role: user.role || 'user' };
+
+            const accessToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "15m" });
+            const refreshToken = jwt.sign({ id: user._id }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
+
+            // Save refresh token on user (simple revocation strategy)
+            user.refreshToken = refreshToken;
+            await user.save();
+
+            // Set refresh token as httpOnly cookie
+            res.cookie("refreshToken", refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "lax",
+                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            });
+            res.status(200).json({ message: "Login successful", accessToken });
+        } else {
+            res.status(400).json({ message: "Invalid OTP" });
+        }
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Refresh endpoint: exchange refresh cookie
+router.post("/refresh", async (req, res) => {
+    try{
+        const token = req.cookies?.refreshToken;
+        if(!token) return res.status(401).json({ message: "No refresh token" });
+
+        let decoded;
+        try{
+            decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+        } catch(e) {
+            return res.status(401).json({ message: "Invalid refresh token"});
+        }
+
+        const user = await User.findById(decoded.id);
+        if(!user || user.refreshToken !== token) return res.status(401).json({ message: 
+            "Invalid refresh token"});
+
+        const payload = { id: user._id, name: user.name, email: user.email, 
+            role: user.role || 'user'}
+
+        const accessToken = jwt.sign(payload, process.env.JWT_SECRET, {expiresIn: "15m"})
+
+        // Optionally rotate refresh token here. For simplicity we keep same 
+        // refresh token until expiry
+        res.json({ accessToken });
+        }
+        catch(err) {
+            res.status(500).json({ message: err.message });
+        }
+    
+});
+
+// Logout: clear refresh token cookie and stored refresh token
+router.post("/logout", async (req, res) => {
+    try{
+        const token = req.cookies?.refreshToken;
+        if(token) {
+            // find user with this refresh token and clear it
+            const user = await User.findOne({ refreshToken: token});
+            if(user) {
+                user.refreshToken = null;
+                await user.save();
+            }
+        }
+        // lax used to allow cookies in same site
+        res.clearCookie("refreshToken", { httpOnly: true, sameSite: "lax"}); 
+        res.json({ message: "Logged out "});
+    } catch(err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
+
+
+
+
+module.exports = router;

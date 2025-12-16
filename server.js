@@ -1,0 +1,31 @@
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const bodyParser = require("body-parser");
+const cookieParser = require("cookie-parser"); 
+const authRoutes = require("./routes/auth");
+require("dotenv").config();
+
+
+const app = express();
+
+// Allow credentials so httpOnly refresh cookie can be sent
+app.use(cors({origin: "http://localhost:5173", credentials:true}));
+
+app.use(cookieParser());
+
+app.use(bodyParser.json());
+
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => console.log("MongoDB connected"))
+    .catch(err => console.log(err));
+
+
+// Server uploaded images statically 
+app.use('/uploads', express.static(require('path').join(__dirname, 
+    'uploads')));
+
+app.use("/api/auth", authRoutes);
+
+app.listen(process.env.PORT, ()=> console.log(`Server 
+running on port ${process.env.PORT}`));
