@@ -219,6 +219,74 @@ router.post("/refresh", async (req, res) => {
     
 });
 
+// forgot password endpoint
+router.post("/forgot-password", async (req, res) => {
+    const { email } = req.body;
+
+    // validation
+    if (!email || !isEmail(email))
+        return res.status(400).json({ message: "Valid email is required" });
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user)
+            return res.status(404).json({ message: "User not found" });
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        user.resetOtp = otp;
+        user.resetOtpExpire = Date.now() + 10 * 60 * 1000; 
+        await user.save();
+
+        await transporter.sendMail({
+            to: email,
+            subject: "Password Reset OTP",
+            html: `<h3>Your password reset OTP is: <b>${otp}</b></h3>
+                   <p>This OTP is valid for 10 minutes.</p>`,
+        });
+
+        res.json({ message: "Password reset OTP sent to email" });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
+// Reset Password using OTP
+// router.post("/reset-password", async (req, res) => {
+//     const { email, otp, newPassword } = req.body;
+
+//     if (!email || !isEmail(email))
+//         return res.status(400).json({ message: "Valid email is required" });
+
+//     if (!otp || !/^\d{6}$/.test(otp))
+//         return res.status(400).json({ message: "Valid OTP required" });
+
+//     if (!newPassword || !isPassword(newPassword))
+//         return res.status(400).json({ message: "Password must be at least 6 characters" });
+
+//     try {
+//         const user = await User.findOne({
+//             email,
+//             resetOtp: otp,
+//             resetOtpExpire: { $gt: Date.now() }
+//         });
+
+//         if (!user)
+//             return res.status(400).json({ message: "Invalid or expired OTP" });
+
+//         user.password = await bcrypt.hash(newPassword, 10);
+//         user.resetOtp = null;
+//         user.resetOtpExpire = null;
+
+//         await user.save();
+
+//         res.json({ message: "Password reset successful" });
+//     } catch (err) {
+//         res.status(500).json({ message: err.message });
+//     }
+// });
+
 // Logout: clear refresh token cookie and stored refresh token
 router.post("/logout", async (req, res) => {
     try{
