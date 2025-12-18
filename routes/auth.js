@@ -141,6 +141,39 @@ router.post("/login", async (req, res) => {
     }
 });
 
+// forgot password endpoint
+router.post("/forgot-password", async (req, res) => {
+    const { email } = req.body;
+
+    // validation
+    if (!email || !isEmail(email))
+        return res.status(400).json({ message: "Valid email is required" });
+
+    try {
+        const user = await User.findOne({ email });
+        if (!user)
+            return res.status(404).json({ message: "User not found" });
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        user.resetOtp = otp;
+        user.resetOtpExpire = Date.now() + 10 * 60 * 1000; 
+        await user.save();
+
+        await transporter.sendMail({
+            to: email,
+            subject: "Password Reset OTP",
+            html: `<h3>Your password reset OTP is: <b>${otp}</b></h3>
+                   <p>This OTP is valid for 10 minutes.</p>`,
+        });
+
+        res.json({ message: "Password reset OTP sent to email" });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
 // Verify OTP and issue access + refresh tokens
 router.post("/verify-otp", async (req, res) => {
     const { email, otp } = req.body;
@@ -219,37 +252,6 @@ router.post("/refresh", async (req, res) => {
     
 });
 
-// forgot password endpoint
-router.post("/forgot-password", async (req, res) => {
-    const { email } = req.body;
-
-    // validation
-    if (!email || !isEmail(email))
-        return res.status(400).json({ message: "Valid email is required" });
-
-    try {
-        const user = await User.findOne({ email });
-        if (!user)
-            return res.status(404).json({ message: "User not found" });
-
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-        user.resetOtp = otp;
-        user.resetOtpExpire = Date.now() + 10 * 60 * 1000; 
-        await user.save();
-
-        await transporter.sendMail({
-            to: email,
-            subject: "Password Reset OTP",
-            html: `<h3>Your password reset OTP is: <b>${otp}</b></h3>
-                   <p>This OTP is valid for 10 minutes.</p>`,
-        });
-
-        res.json({ message: "Password reset OTP sent to email" });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
-    }
-});
 
 
 // Reset Password using OTP
