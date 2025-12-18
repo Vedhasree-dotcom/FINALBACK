@@ -145,7 +145,6 @@ router.post("/login", async (req, res) => {
 router.post("/forgot-password", async (req, res) => {
     const { email } = req.body;
 
-    // validation
     if (!email || !isEmail(email))
         return res.status(400).json({ message: "Valid email is required" });
 
@@ -255,39 +254,49 @@ router.post("/refresh", async (req, res) => {
 
 
 // Reset Password using OTP
-// router.post("/reset-password", async (req, res) => {
-//     const { email, otp, newPassword } = req.body;
+router.post("/reset-password", async (req, res) => {
+    const { email, otp, newPassword } = req.body;
 
-//     if (!email || !isEmail(email))
-//         return res.status(400).json({ message: "Valid email is required" });
+    if (!email || !isEmail(email))
+        return res.status(400).json({ message: "Valid email is required" });
 
-//     if (!otp || !/^\d{6}$/.test(otp))
-//         return res.status(400).json({ message: "Valid OTP required" });
+    if (!otp || !/^\d{6}$/.test(otp))
+        return res.status(400).json({ message: "Valid OTP required" });
 
-//     if (!newPassword || !isPassword(newPassword))
-//         return res.status(400).json({ message: "Password must be at least 6 characters" });
+    if (!newPassword || !isPassword(newPassword))
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
 
-//     try {
-//         const user = await User.findOne({
-//             email,
-//             resetOtp: otp,
-//             resetOtpExpire: { $gt: Date.now() }
-//         });
+    try {
+        const user = await User.findOne({
+            email,
+            resetOtp: otp,
+            resetOtpExpire: { $gt: Date.now() }
+        });
 
-//         if (!user)
-//             return res.status(400).json({ message: "Invalid or expired OTP" });
+        if (!user)
+            return res.status(400).json({ message: "Invalid or expired OTP" });
 
-//         user.password = await bcrypt.hash(newPassword, 10);
-//         user.resetOtp = null;
-//         user.resetOtpExpire = null;
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.resetOtp = null;
+        user.resetOtpExpire = null;
 
-//         await user.save();
+        await user.save();
 
-//         res.json({ message: "Password reset successful" });
-//     } catch (err) {
-//         res.status(500).json({ message: err.message });
-//     }
-// });
+        res.json({ message: "Password reset successful" });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+router.post("/verify-reset-otp", async (req, res) => {
+  const { email, otp } = req.body;
+
+  const user = await User.findOne({ email, resetOtp: otp, resetOtpExpire: { $gt: Date.now() } });
+  if (!user) return res.status(400).json({ message: "Invalid or expired OTP" });
+
+  res.json({ message: "OTP verified successfully" });
+});
+
 
 // Logout: clear refresh token cookie and stored refresh token
 router.post("/logout", async (req, res) => {
