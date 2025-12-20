@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const User = require("../models/User")
 const bcrypt = require("bcryptjs"); // used for token encryption and decryption
-const jwt = require("jsonwebtoken"); //login cheyumbo token koode pass cheyum ,athin cendi
+const jwt = require("jsonwebtoken"); //login cheyumbo token koode pass cheyum ,athin vendi
 const nodemailer = require("nodemailer"); //manage email otp
 const twilio = require("twilio"); //manage phone number otp
 require("dotenv").config();
