@@ -12,6 +12,10 @@ const craftSchema = new mongoose.Schema({
   title: String,
   description: String,
   price: Number,       
+  category: {
+    type: String,
+    enum: ["paper", "home-decor", "painting", "clay", "knitting"],
+  },
   tutorialSteps: [tutorialStepSchema],
 });
 
