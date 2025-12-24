@@ -4,6 +4,10 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser"); 
 const authRoutes = require("./routes/auth");
+const submissionRoutes = require("./routes/submission");
+const adminRoutes = require("./routes/admin");
+const craftRoutes = require("./routes/craft");
+
 require("dotenv").config();
 
 
@@ -26,6 +30,15 @@ app.use('/uploads', express.static(require('path').join(__dirname,
     'uploads')));
 
 app.use("/api/auth", authRoutes);
+
+// crafts
+app.use("/api/crafts", craftRoutes);
+
+// submissions
+// app.use("/api/submissions", require("./routes/submission"));
+
+// admin
+// app.use("/api/admin", adminRoutes);
 
 app.listen(process.env.PORT, ()=> console.log(`Server 
 running on port ${process.env.PORT}`));
