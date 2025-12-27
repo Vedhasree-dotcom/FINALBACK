@@ -44,6 +44,31 @@ exports.getCraftById = async (req, res) => {
   }
 };
 
+
+exports.findCraftsByMaterial = async (req, res) => {
+  try {
+    const materials = JSON.parse(req.body.materials || "[]");
+
+    if (!materials.length) {
+      return res.status(400).json({ message: "Materials required" });
+    }
+
+    const crafts = await Craft.find({
+      materials: { $in: materials },
+    });
+
+    res.json({
+      results: crafts,
+    });
+  } catch (err) {
+    console.error("FindCraft error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+
+
 /**
  * CREATE craft (Admin only)
  * POST /api/crafts

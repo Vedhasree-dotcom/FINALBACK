@@ -4,8 +4,9 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const cookieParser = require("cookie-parser"); 
 const authRoutes = require("./routes/auth");
-const submissionRoutes = require("./routes/submission");
-const adminRoutes = require("./routes/admin");
+// const submissionRoutes = require("./routes/submission");
+// const adminRoutes = require("./routes/admin");
+const path = require("path");
 const craftRoutes = require("./routes/craft");
 
 require("dotenv").config();
@@ -26,8 +27,8 @@ mongoose.connect(process.env.MONGO_URI)
 
 
 // Server uploaded images statically 
-app.use('/uploads', express.static(require('path').join(__dirname, 
-    'uploads')));
+app.use("/uploads", express.static("uploads"));
+
 
 app.use("/api/auth", authRoutes);
 
@@ -39,6 +40,10 @@ app.use("/api/crafts", craftRoutes);
 
 // admin
 // app.use("/api/admin", adminRoutes);
+
+
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 
 app.listen(process.env.PORT, ()=> console.log(`Server 
 running on port ${process.env.PORT}`));
