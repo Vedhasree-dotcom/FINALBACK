@@ -1,15 +1,10 @@
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
 const User = require("../models/User");
 
 const protect = async (req, res, next) => {
   try {
     const header = req.headers.authorization;
-    if (!header) {
-      return res.status(401).json({ message: "No token" });
-    }
-
-    if (!header.startsWith("Bearer ")) {
+    if (!header || !header.startsWith("Bearer ")) {
       return res.status(401).json({ message: "Missing authorization" });
     }
 
@@ -24,20 +19,15 @@ const protect = async (req, res, next) => {
     req.user = user;
     next();
   } catch (err) {
-    console.error("authMiddleware error:", err);
-    res.status(500).json({ message: "Server error in auth middleware" });
+    res.status(401).json({ message: "Invalid token" });
   }
 };
 
 const adminOnly = (req, res, next) => {
-  try {
-    if (!req.user || req.user.role !== "admin") {
-      return res.status(403).json({ message: "Admin access required" });
-    }
-    next();
-  } catch (err) {
-    res.status(500).json({ message: "Server error" });
+  if (req.user && req.user.role === "admin") {
+    return next();
   }
+  return res.status(403).json({ message: "Admin access only" });
 };
 
 module.exports = { protect, adminOnly };

@@ -45,6 +45,9 @@ exports.getCraftById = async (req, res) => {
 };
 
 
+/**
+ * POST /api/crafts/find
+ */
 exports.findCraftsByMaterial = async (req, res) => {
   try {
     const materials = JSON.parse(req.body.materials || "[]");
@@ -53,13 +56,12 @@ exports.findCraftsByMaterial = async (req, res) => {
       return res.status(400).json({ message: "Materials required" });
     }
 
+    // 🔑 MATCH ANY MATERIAL
     const crafts = await Craft.find({
       materials: { $in: materials },
     });
 
-    res.json({
-      results: crafts,
-    });
+    res.json({ results: crafts });
   } catch (err) {
     console.error("FindCraft error:", err);
     res.status(500).json({ message: "Internal server error" });

@@ -16,7 +16,11 @@ const craftSchema = new mongoose.Schema({
     type: String,
     enum: ["paper", "home-decor", "painting", "clay", "knitting"],
   },
-  materials: [String],   
+  materials: [ { 
+    type: String, 
+    required: true ,
+  },
+],
   tutorialSteps: [tutorialStepSchema],
 });
 

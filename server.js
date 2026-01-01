@@ -6,7 +6,7 @@ const cookieParser = require("cookie-parser");
 const authRoutes = require("./routes/auth");
 // const submissionRoutes = require("./routes/submission");
 // const adminRoutes = require("./routes/admin");
-const path = require("path");
+// const path = require("path");
 const craftRoutes = require("./routes/craft");
 
 require("dotenv").config();
@@ -27,13 +27,13 @@ mongoose.connect(process.env.MONGO_URI)
 
 
 // Server uploaded images statically 
-app.use("/uploads", express.static("uploads"));
+// app.use("/uploads", express.static("uploads"));
 
 
 app.use("/api/auth", authRoutes);
 
 // crafts
-app.use("/api/crafts", craftRoutes);
+app.use("/api/craft", craftRoutes);
 
 // submissions
 // app.use("/api/submissions", require("./routes/submission"));
@@ -42,7 +42,7 @@ app.use("/api/crafts", craftRoutes);
 // app.use("/api/admin", adminRoutes);
 
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 
 app.listen(process.env.PORT, ()=> console.log(`Server 
