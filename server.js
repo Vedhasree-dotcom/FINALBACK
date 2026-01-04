@@ -22,7 +22,7 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("MongoDB connected"))
+    .then(() => console.log("MongoDB Atlas connected"))
     .catch(err => console.log(err));
 
 
