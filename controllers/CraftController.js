@@ -14,13 +14,12 @@ exports.getAllCrafts = async (req, res) => {
 };
 
 /**
- * GET crafts by category
- * GET /api/crafts/category/:category
+  GET /api/crafts/category/:category
  */
 exports.getCraftsByCategory = async (req, res) => {
   try {
     const crafts = await Craft.find({
-      category: req.params.category,
+      category: req.params.category.trim(),
     });
     res.json(crafts);
   } catch (err) {
@@ -56,7 +55,6 @@ exports.findCraftsByMaterial = async (req, res) => {
       return res.status(400).json({ message: "Materials required" });
     }
 
-    // 🔑 MATCH ANY MATERIAL
     const crafts = await Craft.find({
       materials: { $in: materials },
     });

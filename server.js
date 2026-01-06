@@ -33,7 +33,7 @@ mongoose.connect(process.env.MONGO_URI)
 app.use("/api/auth", authRoutes);
 
 // crafts
-app.use("/api/craft", craftRoutes);
+app.use("/api/crafts", craftRoutes);
 
 // submissions
 // app.use("/api/submissions", require("./routes/submission"));

@@ -4,8 +4,7 @@ const tutorialStepSchema = new mongoose.Schema({
   stepNumber: Number,
   title: String,
   description: String,
-  image: String,
-  video: String
+  image: String   
 });
 
 const craftSchema = new mongoose.Schema({
@@ -16,13 +15,12 @@ const craftSchema = new mongoose.Schema({
     type: String,
     enum: ["paper", "home-decor", "painting", "clay", "knitting"],
   },
-  materials: [ { 
+  materials: [{ 
     type: String, 
-    required: true ,
-  },
-],
+    required: true 
+  }],
+  tutorialVideo: String,   
   tutorialSteps: [tutorialStepSchema],
 });
-
 
 module.exports = mongoose.model("Craft", craftSchema);
