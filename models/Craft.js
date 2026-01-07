@@ -11,6 +11,10 @@ const craftSchema = new mongoose.Schema({
   title: String,
   description: String,
   price: Number,
+  image: {
+  type: String,
+  required: true
+   },
   category: {
     type: String,
     enum: ["paper", "home-decor", "painting", "clay", "knitting"],
